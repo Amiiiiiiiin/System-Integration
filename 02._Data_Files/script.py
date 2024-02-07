@@ -1,51 +1,56 @@
+# pip install xmltodict pyyaml
+# python script.py
 import json
 import csv
 import yaml
 import xmltodict
-import pandas as pd
 import os
 import glob
 
+def read_txt(file):
+    return file.read()
+
+def read_xml(file):
+    return xmltodict.parse(file.read())
+
+def read_yaml(file):
+    return yaml.safe_load(file)
+
+def read_json(file):
+    return json.load(file)
+
+def read_csv(file):
+    reader = csv.DictReader(file)
+    return list(reader)
+
+file_handler = {
+    '.txt': read_txt,
+    '.xml': read_xml,
+    '.yaml': read_yaml,
+    '.yml': read_yaml,
+    '.json': read_json,
+    '.csv': read_csv
+}
+
 def read_file(file_path):
-    if file_path.endswith('.txt'):
-        with open(file_path, 'r') as file:
-            content = file.read()
-        return content
+    file_type = os.path.splitext(file_path)[1].lower()
+    if file_type in file_handler:
+        with open(file_path) as file:
+            return file_handler[file_type](file)
+    return None
 
-    elif file_path.endswith('.xml'):
-        with open(file_path, 'r') as file:
-            content = xmltodict.parse(file.read())
-        return content
+def main():
+    exclude_file = {'package.json', 'package-lock.json', 'node_modules'}
+    file_pattern = ['*.txt', '*.xml', '*.yaml', '*.yml', '*.json', '*.csv']
 
-    elif file_path.endswith('.yaml') or file_path.endswith('.yml'):
-        with open(file_path, 'r') as file:
-            content = yaml.safe_load(file)
-        return content
+    for pattern in file_pattern:
+        for file_path in glob.glob(pattern, recursive=True):
+            if any(exclude in file_path for exclude in exclude_file):
+                continue
+            
+            parsed_content = read_file(file_path)
+            if parsed_content is not None:
+                print(f"{file_path}:")
+                print(parsed_content)
 
-    elif file_path.endswith('.json'):
-        with open(file_path, 'r') as file:
-            content = json.load(file)
-        return content
-
-    elif file_path.endswith('.csv'):
-        content = pd.read_csv(file_path)
-        return content.to_dict()
-
-    else:
-        return None
-
-exclude_files = ['package.json', 'package-lock.json', 'node_modules']
-
-file_patterns = ['*.txt', '*.xml', '*.yaml', '*.yml', '*.json', '*.csv']
-
-for pattern in file_patterns:
-    for file_path in glob.glob(pattern, recursive=True):
-        if any(file_path.endswith(exclude) for exclude in exclude_files) or any(exclude in file_path for exclude in exclude_files):
-            continue
-        
-        parsed_content = read_file(file_path)
-        if parsed_content is not None:
-            print(f"{file_path}:")
-            print(parsed_content)
-        else:
-            print(f"Skipped unsupported file format: {file_path}")
+main()
