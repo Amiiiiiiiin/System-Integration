@@ -6,47 +6,52 @@ const xml2js = require('xml2js');
 const { parse } = require('csv-parse/sync');
 const glob = require('glob');
 
-async function readAndParseFile(filePath) {
-    const content = await fs.readFile(filePath, 'utf8');
+const readTxt = async (content) => content;
 
-    if (filePath.endsWith('.txt')) {
-        return content;
-    } else if (filePath.endsWith('.xml')) {
-        const parser = new xml2js.Parser();
-        return parser.parseStringPromise(content);
-    } else if (filePath.endsWith('.yaml') || filePath.endsWith('.yml')) {
-        return yaml.load(content);
-    } else if (filePath.endsWith('.json')) {
-        return JSON.parse(content);
-    } else if (filePath.endsWith('.csv')) {
-        return parse(content, {
-            columns: true,
-            skip_empty_lines: true
-        });
-    } else {
-        return null;
+const readXml = async (content) => {
+    const parser = new xml2js.Parser();
+    return parser.parseStringPromise(content);
+    }
+
+const readYaml = async (content) => yaml.load(content);
+
+const readCsv = async (content) => parse(content, { columns: true });
+
+const readJson = async (content) => JSON.parse(content);
+
+const fileHandler = {
+    '.txt': readTxt,
+    '.xml': readXml,
+    '.yaml': readYaml,
+    '.yml': readYaml,
+    '.csv': readCsv,
+    '.json': readJson,
+};
+
+async function readFiles(filePath) {
+    const content = await fs.readFile(filePath, 'utf-8');
+    const fileType = filePath.slice(filePath.lastIndexOf('.')).toLowerCase();
+    
+    if (fileType in fileHandler) {
+        return fileHandler[fileType](content);
     }
 }
 
-function processFiles() {
-    const filePatterns = ['*.txt', '*.xml', '*.yaml', '*.yml', '*.json', '*.csv'];
-    const excludeFiles = ['package.json', 'package-lock.json', 'node_modules'];
+async function main() {
+    const filePattern = ['*.txt', '*.xml', '*.yaml', '*.yml', '*.json', '*.csv'];
+    const excludeFile = ['package.json', 'package-lock.json', 'node_modules/*'];
 
-    filePatterns.forEach(pattern => {
-        const files = glob.sync(pattern, { ignore: excludeFiles.map(file => `**/${file}`) });
-        files.forEach(async (filePath) => {
-            if (!excludeFiles.includes(filePath)) {
-                const parsedContent = await readAndParseFile(filePath);
-                if (parsedContent !== null) {
-                    console.log(`${filePath}:`);
-                    console.log(parsedContent);
-                } else {
-                    console.log(`Skipped unsupported file format: ${filePath}`);
-                }
+    for (const pattern of filePattern) {
+        const files = glob.sync(pattern, { ignore: excludeFile });
+        for (const filePath of files) {
+            const parsedContent = await readFiles(filePath);
+
+            if (parsedContent !== null) {
+                console.log(`${filePath}:`);
+                console.log(JSON.stringify(parsedContent, null, 0));
             }
-        });
-    });
+        }
+    }
 }
 
-
-processFiles();
+main();
