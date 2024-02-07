@@ -34,10 +34,15 @@ def read_file(file_path):
     else:
         return None
 
+exclude_files = ['package.json', 'package-lock.json', 'node_modules']
+
 file_patterns = ['*.txt', '*.xml', '*.yaml', '*.yml', '*.json', '*.csv']
 
 for pattern in file_patterns:
-    for file_path in glob.glob(pattern):
+    for file_path in glob.glob(pattern, recursive=True):
+        if any(file_path.endswith(exclude) for exclude in exclude_files) or any(exclude in file_path for exclude in exclude_files):
+            continue
+        
         parsed_content = read_file(file_path)
         if parsed_content is not None:
             print(f"{file_path}:")
