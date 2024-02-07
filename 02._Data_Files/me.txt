@@ -1,0 +1,3 @@
+Name: Amin
+Age: 25
+Hobbies: Coding, Sleeping Eating
